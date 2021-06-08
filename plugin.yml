@@ -1,0 +1,48 @@
+main: com.shampaggon.crackshot.CSDirector
+name: CrackShot
+author: Shampaggon, DayDream_, Your_Beautiful_Mother, S1robe
+version: 2.6
+description: Replicate any first-person shooter with advanced gun-mechanics and a vast number of exciting and fully customizable features.
+api-version: 1.13
+
+commands:
+  crackshot:
+    description: Displays general information.
+    aliases: [cs,cra,shot,s]
+  scr:
+    description: Reloads the plugin.
+
+permissions:
+  crackshot.*:
+    description: Grants full access to the plugin.
+    children:
+      crackshot.reloadplugin: true
+      crackshot.list: true
+      crackshot.give.all: true
+      crackshot.get.all: true
+      crackshot.use.all: true
+      crackshot.craft.all: true
+      crackshot.buy.all: true
+      crackshot.shops.all: true
+      crackshot.bypass.all: true
+  crackshot.reloadplugin:
+    description: Permission to reload the plugin.
+  crackshot.list:
+    description: Permission to list all weapons.
+  crackshot.give.all:
+    description: Permission to give all weapons.
+  crackshot.get.all:
+    description: Permission to spawn all weapons.
+  crackshot.use.all:
+    description: Permission to use all weapons.
+    default: true
+  crackshot.craft.all:
+    description: Permission to craft all weapons.
+    default: true
+  crackshot.buy.all:
+    description: Permission to purchase all weapons.
+    default: true
+  crackshot.shops.all:
+    description: Permission to create and destroy stores for all weapons.
+  crackshot.bypass.all:
+    description: Permission to bypass all region-checks.

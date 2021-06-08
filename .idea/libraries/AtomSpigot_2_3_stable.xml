@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="AtomSpigot-2.3-stable">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../Jars/AtomSpigot-2.3-stable.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/../../../Jars/AtomSpigot-2.3-stable.jar!/" />
+    </SOURCES>
+  </library>
+</component>
