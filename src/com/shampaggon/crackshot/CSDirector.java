@@ -171,7 +171,7 @@ public class CSDirector extends JavaPlugin implements Listener
 	}
 
 	/**
-	 * @Description this reads from a config file and populates the respective hashmaps
+	 * This reads from a config file and populates the respective hashmaps
 	 * @param config a weapon config file
 	 */
 	public void fillHashMaps(final FileConfiguration config) {
@@ -215,16 +215,15 @@ public class CSDirector extends JavaPlugin implements Listener
 				String[] array3;
 				for (int length3 = (array3 = groups).length, l = 0; l < length3; ++l) {
 					final String group = array3[l];
+					final Set<String> list;
 					if (this.grouplist.containsKey(group)) {
-						final Set<String> list = this.grouplist.get(group);
-						list.add(parent_node);
-						this.grouplist.put(group, list);
+						list = this.grouplist.get(group);
 					}
 					else {
-						final Set<String> list = new HashSet<String>();
-						list.add(parent_node);
-						this.grouplist.put(group, list);
+						list = new HashSet<>();
 					}
+					list.add(parent_node);
+					this.grouplist.put(group, list);
 				}
 			}
 			final String enchantKey = this.getString(parent_node + ".Item_Information.Enchantment_To_Check");
@@ -282,21 +281,21 @@ public class CSDirector extends JavaPlugin implements Listener
 			final List<String> commandList = config.getStringList(parent_node + ".Extras.Run_Command");
 			//if there are any commands to be ran after shooting
 			if (!commandList.isEmpty()) {
-				String stringList = "";
+				StringBuilder stringList = new StringBuilder();
 				final String delimiter = "\u0e48\u0e4b\u0ec9";
 				for (int i = 0; i < commandList.size(); ++i) {
 					final String command = commandList.get(i).trim();
 					if (i != 0) {
-						stringList = stringList + "\u0e48\u0e4b\u0ec9";
+						stringList.append("\u0e48\u0e4b\u0ec9");
 					}
 					if (command.startsWith("@")) {
-						stringList = stringList + "@" + command.substring(1).trim();
+						stringList.append("@").append(command.substring(1).trim());
 					}
 					else {
-						stringList = stringList + command.trim();
+						stringList.append(command.trim());
 					}
 				}
-				CSDirector.strings.put(parent_node + ".Extras.Run_Command", stringList.replaceAll("&", "�"));
+				CSDirector.strings.put(parent_node + ".Extras.Run_Command", stringList.toString().replaceAll("&", "�"));
 			}
 			String name = config.getString(parent_node + ".Item_Information.Item_Name");
 			//just adds color change to the name believe its &f
@@ -357,6 +356,18 @@ public class CSDirector extends JavaPlugin implements Listener
 		}
 	}
 
+
+	//roots: crackshot, cs, cra, shot, s
+	// Syntax						# args
+	//root get <name> <amt> 		2 / 3
+	//root config reload			2
+	//root help 					1
+	//root reload					1
+	//root list <page or all> 		2
+	//root debug [on/off]			2
+	//root give <plr> <name> [amt] 	3/4
+	//aliases are registered into plugin.yml
+
 	/**
 	 * created automatically by anything that is a "CommandExecutor"
 	 * @param sender the sender of a given command
@@ -365,17 +376,6 @@ public class CSDirector extends JavaPlugin implements Listener
 	 * @param args /gamemode 'c name' is a 2 arg string array
 	 * @return returns if the command is successful or not
 	 */
-
-	//roots: crackshot, cs, cra, shot, s
-	// Syntax						# args
-	//root get <name> <amt> 		2 / 3 ##
-	//root config reload			2 ##
-	//root help 					1 ##
-	//root reload
-	//root list <page or all> 		2 ##
-	//root debug [on/off]			2 ##
-	//root give <plr> <name> [amt] 	3/4
-	//aliases are registered into plugin.yml
 	public boolean onCommand(final CommandSender sender, final Command command, final String aliasUsed, final String[] args){
 		if(sender.hasPermission("crackshot.reloadplugin") && command.getName().equals("scr")){
 			return sendReloadResponse(sender);
@@ -391,6 +391,10 @@ public class CSDirector extends JavaPlugin implements Listener
 					CSDirector.debug = !CSDirector.debug;
 					return sendDebugResponse(sender);
 				}
+				if (sender instanceof final Player player && args[0].equalsIgnoreCase("reload")) {
+					return sendPlayerReloadResponse(player);
+				}
+
 			}
 			//conf rl, list #, debug o/f, get 1
 			else if(args.length == 2){
@@ -477,8 +481,7 @@ public class CSDirector extends JavaPlugin implements Listener
 		return true;
 	}
 
-	private boolean sendPlayerReloadReponse(CommandSender sender){
-		final Player player = (Player)sender;
+	private boolean sendPlayerReloadResponse(Player player){
 		final String parent_node2 = this.returnParentNode(player);
 		if (parent_node2 == null) {
 			CSMessages.sendMessage(player, this.heading, CSMessages.Message.CANNOT_RELOAD.getMessage());
@@ -541,31 +544,42 @@ public class CSDirector extends JavaPlugin implements Listener
 
 	@EventHandler
 	public void OnPlayerInteract(final PlayerInteractEvent event) {
-		if (event.getAction() != Action.PHYSICAL) {
-			if (event.getAction() == Action.LEFT_CLICK_BLOCK && event.getClickedBlock().getType() == Material.WALL_SIGN && this.shopEvent(event)) {
+		Action eventAction = event.getAction();
+		Block clickedBlock = event.getClickedBlock();
+		if (eventAction != Action.PHYSICAL) {
+
+			//if we left click a wall sign and event is a shop event, then dont process it here go to this.ShopEvent
+			if (eventAction == Action.LEFT_CLICK_BLOCK && clickedBlock.getType() == Material.WALL_SIGN && this.shopEvent(event)) {
 				return;
 			}
-			if (event.getAction() == Action.LEFT_CLICK_BLOCK && MaterialManager.isSkullBlock(event.getClickedBlock()) && event.getClickedBlock().hasMetadata("CS_transformers")) {
+			//if we left click a skull and that skull has the tag CS_Transformer, its used for somethign else (TBDL)
+			if (eventAction == Action.LEFT_CLICK_BLOCK && MaterialManager.isSkullBlock(clickedBlock) && clickedBlock.hasMetadata("CS_transformers")) {
 				event.setCancelled(true);
 			}
-			final Player shooter = event.getPlayer();
-			final ItemStack item = shooter.getItemInHand();
-			final String parent_node = this.returnParentNode(shooter);
+
+			final Player shooter = event.getPlayer();					//shooeter duh
+			final ItemStack item = shooter.getItemInHand();				//item in main hand (gun?)
+			final String parent_node = this.returnParentNode(shooter);	//the weapons.yml tag node for this item
+
+			//if we dont find a name for this weapon its not somethign we should handle
 			if (parent_node == null) {
 				return;
 			}
+			// if this gu nhas a melee mode but our hot bar is invalid (
 			if (!this.getBoolean(parent_node + ".Item_Information.Melee_Mode") && !this.validHotbar(shooter, parent_node)) {
 				return;
 			}
 			if (!this.regionAndPermCheck(shooter, parent_node, false)) {
 				return;
 			}
+
 			final boolean rightShoot = this.getBoolean(parent_node + ".Shooting.Right_Click_To_Shoot");
 			final boolean dualWield = this.isDualWield(shooter, parent_node, item);
-			final boolean leftClick = event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK;
-			final boolean rightClick = event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK;
+			final boolean leftClick = eventAction == Action.LEFT_CLICK_AIR || eventAction == Action.LEFT_CLICK_BLOCK;
+			final boolean rightClick = eventAction == Action.RIGHT_CLICK_AIR || eventAction == Action.RIGHT_CLICK_BLOCK;
 			final boolean rdeEnable = this.getBoolean(parent_node + ".Explosive_Devices.Enable");
 			final String[] attachTypeAndInfo = this.getAttachment(parent_node, item);
+
 			if (attachTypeAndInfo[0] != null) {
 				if (attachTypeAndInfo[0].equalsIgnoreCase("accessory") && rdeEnable) {
 					shooter.sendMessage(this.heading + "The weapon '" + parent_node + "' is an attachment. It cannot use the Explosive_Devices module!");
@@ -576,13 +590,13 @@ public class CSDirector extends JavaPlugin implements Listener
 					return;
 				}
 			}
-			if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
+			if (eventAction == Action.LEFT_CLICK_BLOCK) {
 				final boolean noBlockDmg = this.getBoolean(parent_node + ".Shooting.Cancel_Left_Click_Block_Damage");
 				if (noBlockDmg) {
 					event.setCancelled(true);
 				}
 			}
-			if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+			if (eventAction == Action.RIGHT_CLICK_AIR || eventAction == Action.RIGHT_CLICK_BLOCK) {
 				final boolean rightInteract = this.getBoolean(parent_node + ".Shooting.Cancel_Right_Click_Interactions");
 				if (rightInteract) {
 					event.setCancelled(true);
@@ -718,12 +732,12 @@ public class CSDirector extends JavaPlugin implements Listener
 				}
 			}
 		}
-		else if (MaterialManager.isPressurePlate(event.getClickedBlock())) {
+		else if (MaterialManager.isPressurePlate(clickedBlock)) {
 			final Player victim = event.getPlayer();
 			final List<Entity> l = victim.getNearbyEntities(4.0, 4.0, 4.0);
 			for (final Entity e : l) {
 				if (e instanceof ItemFrame) {
-					this.csminion.boobyAction(event.getClickedBlock(), victim, ((ItemFrame)e).getItem());
+					this.csminion.boobyAction(clickedBlock, victim, ((ItemFrame)e).getItem());
 				}
 			}
 		}
