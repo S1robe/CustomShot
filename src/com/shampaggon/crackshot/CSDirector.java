@@ -2,7 +2,6 @@ package com.shampaggon.crackshot;
 
 import org.bukkit.plugin.java.*;
 import org.bukkit.configuration.file.*;
-import org.bukkit.plugin.*;
 import org.bukkit.enchantments.*;
 import org.bukkit.command.*;
 import org.bukkit.command.Command;
@@ -10,7 +9,7 @@ import org.bukkit.potion.*;
 import org.bukkit.metadata.*;
 import org.bukkit.event.*;
 import java.util.*;
-import org.bukkit.projectiles.*;
+
 import org.bukkit.permissions.*;
 import org.bukkit.util.*;
 import org.bukkit.util.Vector;
@@ -104,22 +103,7 @@ public class CSDirector extends JavaPlugin implements Listener
 	}
 
 	public void onEnable() {
-		//This try catch is used to tell if we are using 1.9-12 or not.
-		try {
-			Material.valueOf("SKULL");
-		}
-		catch (IllegalArgumentException e) {
-			MaterialManager.pre113 = false;
-		}
-		//this try catch checks if the class ProjectileSource exists, this only exists on 1.8+. its used to get the entity that did the shooting
-		try {
-			Class.forName("org.bukkit.projectiles.ProjectileSource");
-		}
-		catch (ClassNotFoundException e2) {
-			this.printM("Failed to load. Your version of CraftBukkit is outdated!");
-			this.setEnabled(false);
-			return;
-		}
+		validateInstall();
 		this.csminion.loadWeapons(null);								//loads weapons
 		this.csminion.loadGeneralConfig();										//loads general.yml
 		this.csminion.loadMessagesConfig();										//loads messages.yml
@@ -170,8 +154,24 @@ public class CSDirector extends JavaPlugin implements Listener
 		this.csminion.clearRecipes();
 	}
 
+	private void validateInstall(){
+		try {
+			Material.valueOf("SKULL");
+			Class.forName("org.bukkit.projectiles.ProjectileSource");
+		}
+		//This try catch is used to tell if we are using 1.9-12 or not.
+		catch (IllegalArgumentException e) {
+			MaterialManager.pre113 = false;
+		}
+		//this try catch checks if the class ProjectileSource exists, this only exists on 1.8+. its used to get the entity that did the shooting
+		catch (ClassNotFoundException e2) {
+			this.printM("Failed to load. Your version of CraftBukkit is outdated!");
+			this.setEnabled(false);
+		}
+	}
+
 	/**
-	 *
+	 * @Description this reads from a config file and populates the respective hashmaps
 	 * @param config a weapon config file
 	 */
 	public void fillHashMaps(final FileConfiguration config) {
@@ -358,146 +358,186 @@ public class CSDirector extends JavaPlugin implements Listener
 	}
 
 	/**
-	 *
-	 * @param sender
-	 * @param command
-	 * @param aliasUsed
-	 * @param args
-	 * @return
+	 * created automatically by anything that is a "CommandExecutor"
+	 * @param sender the sender of a given command
+	 * @param command the command root that is being sent, ex /'gamemode' c name; gms is the command
+	 * @param aliasUsed if an alias is used /'gms' would be an alias
+	 * @param args /gamemode 'c name' is a 2 arg string array
+	 * @return returns if the command is successful or not
 	 */
-	public boolean onCommand(final CommandSender sender, final Command command, final String aliasUsed, final String[] args) {
-		if(command.getName().equalsIgnoreCase("scr")){
-			if (sender instanceof Player && !sender.hasPermission("crackshot.reloadplugin")) {
-				sender.sendMessage(this.heading + "You do not have permission to do this.");
-				return true;
-			}
-			this.disWorlds = new String[] { "0" };
-			this.csminion.clearRecipes();
-			CSDirector.bools.clear();
-			CSDirector.ints.clear();
-			CSDirector.strings.clear();
-			this.morobust.clear();
-			this.wlist.clear();
-			this.rdelist.clear();
-			this.boobs.clear();
-			CSDirector.dubs.clear();
-			this.grouplist.clear();
-			this.melees.clear();
-			this.enchlist.clear();
-			this.convIDs.clear();
-			this.parentlist.clear();
-			CSMessages.messages.clear();
-			final Player cmdReloader = (sender instanceof Player) ? (Player)sender : null;
-			this.csminion.loadWeapons(cmdReloader);
-			this.csminion.loadGeneralConfig();
-			this.csminion.loadMessagesConfig();
-			this.csminion.customRecipes();
-			if (sender instanceof Player) {
-				sender.sendMessage(this.heading + "�dConfiguration reloaded.");
-			}
-			else {
-				this.printM("�dConfiguration reloaded.");
-			}
-			return true;
+
+	//roots: crackshot, cs, cra, shot, s
+	// Syntax						# args
+	//root get <name> <amt> 		2 / 3 ##
+	//root config reload			2 ##
+	//root help 					1 ##
+	//root reload
+	//root list <page or all> 		2 ##
+	//root debug [on/off]			2 ##
+	//root give <plr> <name> [amt] 	3/4
+	//aliases are registered into plugin.yml
+	public boolean onCommand(final CommandSender sender, final Command command, final String aliasUsed, final String[] args){
+		if(sender.hasPermission("crackshot.reloadplugin") && command.getName().equals("scr")){
+			return sendReloadResponse(sender);
 		}
-		if (!command.getName().equalsIgnoreCase("crackshot")) {
+		//crackshot rooted commands see Above
+		if (command.getName().equalsIgnoreCase("crackshot")) {
+			//help & reload
+			if(args.length == 1){
+				if(args[0].equalsIgnoreCase("h") || args[0].equalsIgnoreCase("help")){
+					return sendHelpResponse(sender);
+				}
+				else if(sender.hasPermission("crackshot.debug.all") && (args[0].equalsIgnoreCase("debug") || args[0].equalsIgnoreCase("d"))){
+					CSDirector.debug = !CSDirector.debug;
+					return sendDebugResponse(sender);
+				}
+			}
+			//conf rl, list #, debug o/f, get 1
+			else if(args.length == 2){
+				if(sender.hasPermission("crackshot.reloadplugin") && (args[0].equalsIgnoreCase("config") && args[1].equalsIgnoreCase("reload")
+						|| args[0].equalsIgnoreCase("conf") && args[1].equalsIgnoreCase("rel" )
+						|| args[0].equalsIgnoreCase("c") && args[1].equalsIgnoreCase("r"))){
+					return sendReloadResponse(sender);
+				}
+				else if(sender.hasPermission("crackshot.list") && (args[0].equalsIgnoreCase("list") || args[0].equalsIgnoreCase("l"))){
+					return this.csminion.listWeapons(sender, args[1]);
+				}
+				else if(sender.hasPermission("crackshot.debug.all") && (args[0].equalsIgnoreCase("debug") || args[0].equalsIgnoreCase("d"))){
+					if(args[1].equalsIgnoreCase("on")
+							|| args[1].equalsIgnoreCase("true"))
+						CSDirector.debug = true;
+					else if (args[1].equalsIgnoreCase("off")
+							|| args[1].equalsIgnoreCase("false"))
+						CSDirector.debug = false;
+					return sendDebugResponse(sender);
+				}
+				else if(sender instanceof Player && args[0].equalsIgnoreCase("get")){
+					return this.csminion.getWeaponCommand((Player)sender, args[1], true, "1", false, false);
+				}
+			}
+			//get <amt> , give 1
+			else if(args.length == 3){
+				if(sender instanceof Player && args[0].equalsIgnoreCase("get")){
+					return this.csminion.getWeaponCommand((Player)sender, args[1], true, args[2], false, false);
+				}
+				else if(args[0].equalsIgnoreCase("give")){
+					return sendGiveResponse(sender, args);
+				}
+			}
+			//give <amt>
+			else if(args.length == 4){
+				if(args[0].equalsIgnoreCase("give")){
+					return sendGiveResponse(sender, args);
+				}
+			}
+			sender.sendMessage(this.heading + "Invalid command.");
 			return false;
 		}
-		if (args.length == 1 && args[0].equalsIgnoreCase("d")) {
-    		CSDirector.debug = !CSDirector.debug;
-    		sender.sendMessage("�cDebug Mode Enabled");
-    		return true;
-		}
-		else if (args.length == 1 && args[0].equalsIgnoreCase("help")) {
-			if (!(sender instanceof Player)) {
-				sender.sendMessage("[CrackShot] Version: " + this.version);
-				return true;
-			}
-			sender.sendMessage("�r                    �f[�cCrackshot�f]�f         ");
-			sender.sendMessage("�7\u2192 �6Authors: �6Shampaggon, �c� �aDayDream_, �5S1robe");
-			sender.sendMessage("�7\u2192 �6Version: �6" + this.version);
-			sender.sendMessage("�7\u2192 �5Aliases: �7/shot, /cra, /cs, /s");
-			sender.sendMessage("�7\u2192 �bMain Commands:");
-			sender.sendMessage("�7\u2192 �c- �a/shot list [all or {pagenumber}]");
-			sender.sendMessage("�7\u2192 �c- �a/shot give {player} {weapon} {amount}");
-			sender.sendMessage("�7\u2192 �c- �a/s get {weapon} {amount}");
-			sender.sendMessage("�7\u2192 �c- �a/scr [reloads the configuration files]");
-			sender.sendMessage("�7\u2192 �c- �a/s d [enables debug mode]");
+		return true;
+	}
 
+	/**
+	 * This is a subroutine to parse the reload command and its aliases.
+	 * @param sender the sender of the command
+	 * @return a boolean, true if the command executed successfull, false otherwise.
+	 */
+	private boolean sendReloadResponse(CommandSender sender){
+		if (!sender.hasPermission("crackshot.reloadplugin")) {
+			sender.sendMessage(this.heading + "You do not have permission to do this.");
 			return true;
 		}
-		else if ((args.length == 3 || args.length == 4) && args[0].equalsIgnoreCase("give")) {
-			String prefix = this.heading;
-			String amount = "1";
-			if (!(sender instanceof Player)) {
-				prefix = "[CrackShot] ";
-			}
-			if (args.length == 4) {
-				amount = args[3];
-			}
-			final String parent_node = this.csminion.identifyWeapon(args[2]);
-			if (parent_node == null) {
-				sender.sendMessage(prefix + "No weapon matches '" + args[2] + "'.");
-				return false;
-			}
-			if (sender instanceof Player && !sender.hasPermission("crackshot.give." + parent_node) && !sender.hasPermission("crackshot.give.all")) {
-				sender.sendMessage(prefix + "You do not have permission to give this item.");
-				return false;
-			}
+		//clears data
+		this.disWorlds = new String[] { "0" };
+		this.csminion.clearRecipes();
+		CSDirector.bools.clear();
+		CSDirector.ints.clear();
+		CSDirector.strings.clear();
+		this.morobust.clear();
+		this.wlist.clear();
+		this.rdelist.clear();
+		this.boobs.clear();
+		CSDirector.dubs.clear();
+		this.grouplist.clear();
+		this.melees.clear();
+		this.enchlist.clear();
+		this.convIDs.clear();
+		this.parentlist.clear();
+		CSMessages.messages.clear();
+
+		if (sender instanceof Player) {
+			this.csminion.loadWeapons((Player) sender);
+		}
+		else {
+			this.csminion.loadWeapons(null);
+		}
+		this.csminion.loadGeneralConfig();
+		this.csminion.loadMessagesConfig();
+		this.csminion.customRecipes();
+		sender.sendMessage(this.heading + "�dConfiguration reloaded.");
+		return true;
+	}
+
+	private boolean sendPlayerReloadReponse(CommandSender sender){
+		final Player player = (Player)sender;
+		final String parent_node2 = this.returnParentNode(player);
+		if (parent_node2 == null) {
+			CSMessages.sendMessage(player, this.heading, CSMessages.Message.CANNOT_RELOAD.getMessage());
+			return true;
+		}
+		if (!player.hasPermission("crackshot.use." + parent_node2) && !player.hasPermission("crackshot.use.all")) {
+			CSMessages.sendMessage(player, this.heading, CSMessages.Message.NP_WEAPON_USE.getMessage());
+			return false;
+		}
+		this.reloadAnimation(player, parent_node2);
+		return true;
+	}
+
+	private boolean sendHelpResponse(CommandSender sender){
+		sender.sendMessage("�r                    �f[�cCrackshot�f]�f         ");
+		sender.sendMessage("�7\u2192 �6Authors: �6Shampaggon, �c� �aDayDream_, �5S1robe");
+		sender.sendMessage("�7\u2192 �6Version: �6" + this.version);
+		sender.sendMessage("�7\u2192 �5Aliases: �7/shot, /cra, /cs, /s");
+		sender.sendMessage("�7\u2192 �bMain Commands:");
+		sender.sendMessage("�7\u2192 �c- �a/shot list [all or {pagenumber}]");
+		sender.sendMessage("�7\u2192 �c- �a/shot give {player} {weapon} {amount}");
+		sender.sendMessage("�7\u2192 �c- �a/s get {weapon} {amount}");
+		sender.sendMessage("�7\u2192 �c- �a/scr [reloads the configuration files]");
+		sender.sendMessage("�7\u2192 �c- �a/s d [enables debug mode]");
+		return true;
+	}
+
+	private boolean sendDebugResponse(CommandSender sender){
+		sender.sendMessage("�cCrackshot debug mode is now: " + CSDirector.debug);
+		return true;
+	}
+
+	private boolean sendGiveResponse(CommandSender sender, String[] args){
+		String amount = "1";
+		if (args.length == 4) {
+			amount = args[3];
+		}
+		final String parent_node = this.csminion.identifyWeapon(args[2]);
+		if (parent_node == null) {
+			sender.sendMessage(this.heading + "No weapon matches '" + args[2] + "'.");
+			return false;
+		}
+		if (sender.hasPermission("crackshot.give." + parent_node) && !sender.hasPermission("crackshot.give.all")) {
 			final Player receiver = Bukkit.getServer().getPlayer(args[1]);
 			if (receiver == null) {
-				sender.sendMessage(prefix + "No player named '" + args[1] + "' was found.");
+				sender.sendMessage(this.heading + "No player named '" + args[1] + "' was found.");
 				return false;
 			}
 			if (receiver.getInventory().firstEmpty() != -1) {
-				sender.sendMessage(prefix + "Package delivered to " + receiver.getName() + ".");
-				this.csminion.getWeaponCommand(receiver, parent_node, false, amount, true, false);
-				return true;
+				sender.sendMessage(this.heading + "Package delivered to " + receiver.getName() + ".");
+				return this.csminion.getWeaponCommand(receiver, parent_node, false, amount, true, false);
 			}
-			sender.sendMessage(prefix + receiver.getName() + "'s inventory is full.");
+			sender.sendMessage(this.heading + receiver.getName() + "'s inventory is full.");
 			return false;
 		}
-		else {
-			if (!(sender instanceof Player)) {
-				sender.sendMessage("[CrackShot] Invalid command.");
-				return false;
-			}
-			final Player player = (Player)sender;
-			if ((args.length == 2 || args.length == 3) && args[0].equalsIgnoreCase("get")) {
-				String amount = "1";
-				if (args.length == 3) {
-					amount = args[2];
-				}
-				this.csminion.getWeaponCommand(player, args[1], true, amount, false, false);
-				return true;
-			}
-			if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
-				final String parent_node2 = this.returnParentNode(player);
-				if (parent_node2 == null) {
-					CSMessages.sendMessage(player, this.heading, CSMessages.Message.CANNOT_RELOAD.getMessage());
-					return true;
-				}
-				if (!player.hasPermission("crackshot.use." + parent_node2) && !player.hasPermission("crackshot.use.all")) {
-					CSMessages.sendMessage(player, this.heading, CSMessages.Message.NP_WEAPON_USE.getMessage());
-					return false;
-				}
-				this.reloadAnimation(player, parent_node2);
-				return true;
-			}
-			else {
-				if ((args.length != 1 && args.length != 2) || !args[0].equalsIgnoreCase("list")) {
-					player.sendMessage(this.heading + "Invalid command.");
-					return false;
-				}
-				if (!player.hasPermission("crackshot.list")) {
-					player.sendMessage(this.heading + "You do not have permission to do this.");
-					return false;
-				}
-				this.csminion.listWeapons(player, args);
-				return true;
-			}
-		}
+		sender.sendMessage(this.heading + "You do not have permission to give this item.");
+		return false;
 	}
+
 
 	@EventHandler
 	public void OnPlayerInteract(final PlayerInteractEvent event) {

@@ -252,45 +252,42 @@ public class CSMinion
         player.updateInventory();
     }
     
-    public void getWeaponCommand(final Player player, final String weapon, final boolean spawned, final String amount, final boolean given, final boolean byAPI) {
+    public boolean getWeaponCommand(final Player player, final String weapon, final boolean spawned, final String amount, final boolean given, final boolean byAPI) {
         final String parent_node = this.identifyWeapon(weapon);
         if (parent_node != null) {
             final String attachType = this.plugin.getString(parent_node + ".Item_Information.Attachments.Type");
             if (attachType == null || !attachType.equalsIgnoreCase("accessory")) {
-                this.getWeaponHelper(player, parent_node, spawned, amount, given, byAPI);
-                return;
+                return this.getWeaponHelper(player, parent_node, spawned, amount, given, byAPI);
+
             }
         }
         player.sendMessage(this.heading + "No weapon matches '" + weapon + "'.");
+        return false;
     }
     
-    public void getWeaponHelper(final Player player, final String parentNode, final boolean spawned, final String amount, final boolean given, final boolean byAPI) {
+    public boolean getWeaponHelper(final Player player, final String parentNode, final boolean spawned, final String amount, final boolean given, final boolean byAPI) {
         if (spawned && !player.hasPermission("crackshot.get." + parentNode) && !player.hasPermission("crackshot.get.all")) {
             player.sendMessage(this.heading + "You do not have permission to get this item.");
-            return;
+            return false;
         }
         final ItemStack sniperID = this.vendingMachine(parentNode);
         if (sniperID == null) {
             player.sendMessage(this.heading + "You have failed to provide a value for 'Item_Type'.");
-            return;
+            return false;
         }
         int intAmount = 1;
         if (amount != null) {
             try {
-                intAmount = Integer.valueOf(amount);
+                intAmount = Integer.parseInt(amount);
+                intAmount = (intAmount < 1) ? 1 : Math.min(intAmount, 64);
             }
-            catch (NumberFormatException ex) {}
-        }
-        if (intAmount > 64) {
-            intAmount = 64;
-        }
-        if (intAmount < 1) {
-            player.sendMessage(this.heading + "'" + intAmount + "' is not a valid amount.");
-            return;
+            catch (NumberFormatException ex) {
+                player.sendMessage(this.heading + "You have entered an invalid amount.");
+            }
         }
         if (player.getInventory().firstEmpty() == -1) {
             player.sendMessage(this.heading + "Your inventory is full.");
-            return;
+            return true;
         }
         String multiplier = "";
         if (intAmount > 1) {
@@ -313,11 +310,11 @@ public class CSMinion
         if (!byAPI) {
             this.plugin.playSoundEffects(player, parentNode, ".Item_Information.Sounds_Acquired", false, null);
         }
+        return true;
     }
     
     public Vector getAlignedDirection(final Location locA, final Location locB) {
-        final Vector vector = locB.toVector().subtract(locA.toVector()).normalize();
-        return vector;
+        return locB.toVector().subtract(locA.toVector()).normalize();
     }
     
     public void loadGeneralConfig() {
@@ -512,39 +509,30 @@ public class CSMinion
         CSDirector.ints.put("totalPages", (int)Math.ceil((counter - 1) / 18.0));
     }
     
-    public void listWeapons(final Player sender, final String[] args) {
+    public boolean listWeapons(final CommandSender sender, final String arg) {
         int start = 1;
         int page = 1;
         int finalChapter = this.plugin.getInt("totalPages");
         if (finalChapter == 0) {
             finalChapter = 1;
         }
-        if (args.length == 2 && !args[1].equalsIgnoreCase("all")) {
+        if (!arg.equalsIgnoreCase("all")) {
             int pageNumber;
             try {
-                pageNumber = Integer.valueOf(args[1]);
+                pageNumber = Integer.parseInt(arg);
+                if(pageNumber < 1){
+                    throw new NumberFormatException("Less than one!");
+                }
             }
             catch (NumberFormatException ex) {
                 sender.sendMessage(this.heading + "You have provided an invalid page number.");
-                return;
+                return false;
             }
-            if (pageNumber < 1) {
-                return;
-            }
-            start = 1 + (pageNumber - 1) * 18;
-            page = pageNumber;
-            if (start >= finalChapter * 18) {
-                start = 1 + (finalChapter - 1) * 18;
-            }
-            if (page < 1) {
-                page = 1;
-            }
-            else if (page > finalChapter) {
-                page = finalChapter;
-            }
+            start = (start >= finalChapter * 18) ? 1 + (finalChapter - 1) * 18 : 1 + (pageNumber - 1) * 18;
+            page = (page > finalChapter) ? finalChapter : pageNumber;
         }
         int finish = start + 18;
-        if (args.length == 2 && args[1].equalsIgnoreCase("all")) {
+        if (arg.equalsIgnoreCase("all")) {
             finish = finalChapter * 18;
             sender.sendMessage("�b�l\u25ba �7Weapons �5[All pages] �b�l\u25c4");
         }
@@ -559,6 +547,7 @@ public class CSMinion
             final String weapon2 = this.plugin.wlist.get(i + 1);
             sender.sendMessage(this.makePretty(weapon, weapon2));
         }
+        return true;
     }
     
     public String makePretty(String weapon, String weapon2) {

@@ -1,6 +1,6 @@
 main: com.shampaggon.crackshot.CSDirector
 name: CrackShot
-author: Shampaggon, DayDream_, Your_Beautiful_Mother, S1robe
+author: Shampaggon, DayDream_, S1robe
 version: 2.6
 description: Replicate any first-person shooter with advanced gun-mechanics and a vast number of exciting and fully customizable features.
 api-version: 1.13
@@ -9,8 +9,9 @@ commands:
   crackshot:
     description: Displays general information.
     aliases: [cs,cra,shot,s]
+    usage: /crackshot help
   scr:
-    description: Reloads the plugin.
+    description: shortcut for reloading the plugin.
 
 permissions:
   crackshot.*:
@@ -25,6 +26,7 @@ permissions:
       crackshot.buy.all: true
       crackshot.shops.all: true
       crackshot.bypass.all: true
+      crackshot.debug.all: true
   crackshot.reloadplugin:
     description: Permission to reload the plugin.
   crackshot.list:
@@ -46,3 +48,5 @@ permissions:
     description: Permission to create and destroy stores for all weapons.
   crackshot.bypass.all:
     description: Permission to bypass all region-checks.
+  crackshot.debug.all:
+    description: Permission to toggle debug mode for error handling.
