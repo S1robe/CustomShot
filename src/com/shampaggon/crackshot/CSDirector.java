@@ -541,7 +541,6 @@ public class CSDirector extends JavaPlugin implements Listener
 		return false;
 	}
 
-
 	@EventHandler
 	public void OnPlayerInteract(final PlayerInteractEvent event) {
 		Action eventAction = event.getAction();
@@ -569,16 +568,17 @@ public class CSDirector extends JavaPlugin implements Listener
 			if (!this.getBoolean(parent_node + ".Item_Information.Melee_Mode") && !this.validHotbar(shooter, parent_node)) {
 				return;
 			}
+			//checks if were in a region that denies us, or if we do not have bypass
 			if (!this.regionAndPermCheck(shooter, parent_node, false)) {
 				return;
 			}
 
-			final boolean rightShoot = this.getBoolean(parent_node + ".Shooting.Right_Click_To_Shoot");
-			final boolean dualWield = this.isDualWield(shooter, parent_node, item);
-			final boolean leftClick = eventAction == Action.LEFT_CLICK_AIR || eventAction == Action.LEFT_CLICK_BLOCK;
-			final boolean rightClick = eventAction == Action.RIGHT_CLICK_AIR || eventAction == Action.RIGHT_CLICK_BLOCK;
-			final boolean rdeEnable = this.getBoolean(parent_node + ".Explosive_Devices.Enable");
-			final String[] attachTypeAndInfo = this.getAttachment(parent_node, item);
+			final boolean rightShoot = this.getBoolean(parent_node + ".Shooting.Right_Click_To_Shoot");			//simply sets if this gun should shoot on right click
+			final boolean dualWield = this.isDualWield(shooter, parent_node, item);										//sets a check if were dual wielding (Ex. Deagle)
+			final boolean leftClick = eventAction == Action.LEFT_CLICK_AIR || eventAction == Action.LEFT_CLICK_BLOCK;	//sets if we are left clicking
+			final boolean rightClick = eventAction == Action.RIGHT_CLICK_AIR || eventAction == Action.RIGHT_CLICK_BLOCK;//sets if we are right clicking
+			final boolean rdeEnable = this.getBoolean(parent_node + ".Explosive_Devices.Enable");				//checks if a click should enable explosives
+			final String[] attachTypeAndInfo = this.getAttachment(parent_node, item);									//gets a list of attatchments we might need to activate
 
 			if (attachTypeAndInfo[0] != null) {
 				if (attachTypeAndInfo[0].equalsIgnoreCase("accessory") && rdeEnable) {
@@ -688,8 +688,10 @@ public class CSDirector extends JavaPlugin implements Listener
 						return;
 					}
 				}
+
 				final boolean zoomEnable = this.getBoolean(parent_node + ".Scope.Enable");
 				final boolean nightScope = this.getBoolean(parent_node + ".Scope.Night_Vision");
+
 				if (!zoomEnable || shooter.hasMetadata("markOfTheReload")) {
 					return;
 				}
@@ -758,12 +760,11 @@ public class CSDirector extends JavaPlugin implements Listener
 				entVictim.removeMetadata("CS_singed", this);
 			}
 		}
-		if (entVictim instanceof Player && entVictim.hasMetadata("deep_fr1ed")) {
+		if (entVictim instanceof final Player victim && entVictim.hasMetadata("deep_fr1ed")) {
 			cancelMelee = true;
 			String parent_node = null;
 			Player pPlayer = null;
 			boolean nodam = false;
-			final Player victim = (Player)entVictim;
 			final int damage = victim.getMetadata("deep_fr1ed").get(0).asInt();
 			victim.removeMetadata("deep_fr1ed", this);
 			if (victim.hasMetadata("CS_nodam")) {
@@ -786,8 +787,7 @@ public class CSDirector extends JavaPlugin implements Listener
 				}
 			}
 		}
-		if (entDmger instanceof Player && entVictim instanceof LivingEntity) {
-			final Player player = (Player)entDmger;
+		if (entDmger instanceof final Player player && entVictim instanceof LivingEntity) {
 			final Location finalLoc = player.getEyeLocation();
 			final Vector direction = player.getEyeLocation().getDirection().normalize().multiply(0.5);
 			for (int i = 0; i < 10; ++i) {
@@ -810,8 +810,7 @@ public class CSDirector extends JavaPlugin implements Listener
 				}
 			}
 		}
-		if (!cancelMelee && entDmger instanceof Player && event.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK && !event.isCancelled() && entVictim instanceof LivingEntity) {
-			final Player player = (Player)entDmger;
+		if (!cancelMelee && entDmger instanceof final Player player && event.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK && !event.isCancelled() && entVictim instanceof LivingEntity) {
 			final String parentNode = this.returnParentNode(player);
 			if (parentNode != null && this.regionAndPermCheck(player, parentNode, true)) {
 				int punchDelay = this.getInt(parentNode + ".Shooting.Delay_Between_Shots");
@@ -2797,16 +2796,12 @@ public class CSDirector extends JavaPlugin implements Listener
 					break;
 				}
 				for (int i = 0; i < entAmount; ++i) {
-					String mobEnum = args[0].toUpperCase();
-					if (args[0].equals("ZOMBIE_VILLAGER")) {
-						mobEnum = "ZOMBIE";
-					}
-					else if (args[0].equals("WITHER_SKELETON")) {
-						mobEnum = "SKELETON";
-					}
-					else if (args[0].equals("TAMED_WOLF")) {
-						mobEnum = "WOLF";
-					}
+					String mobEnum = switch (args[0]) {
+						case "ZOMBIE_VILLAGER" -> "ZOMBIE";
+						case "WITHER_SKELETON" -> "SKELETON";
+						case "TAMED_WOLF" -> "WOLF";
+						default -> args[0].toUpperCase();
+					};
 					EntityType entType;
 					try {
 						entType = EntityType.valueOf(mobEnum);
